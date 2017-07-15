@@ -22,7 +22,7 @@ export declare function request(options: RequestOptions, callback: ResponseCallb
 export declare class Stream {
     protected stream: req.Request;
     constructor(stream: req.Request);
-    on(event: 'error' | 'data' | 'end' | 'finish', callback: Function): void;
+    on(event: 'error' | 'data' | 'end' | 'finish' | 'complete', callback: Function): void;
     write(data: ContentType, callback?: (error: Error) => void): void;
     end(data: ContentType, callback?: (error: Error) => void): void;
 }

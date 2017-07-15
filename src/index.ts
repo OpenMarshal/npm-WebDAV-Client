@@ -1,5 +1,6 @@
 import { XMLElement, XML, XMLElementBuilder } from 'xml-js-builder'
 import { request, stream, Stream, RequestOptions, Response, ContentType, ResponseCallback } from './request'
+import * as crypto from 'crypto'
 
 export interface Properties
 {
@@ -30,23 +31,157 @@ export interface Lock
     uid : string
 }
 
-export class Connection
+export interface AuthenticatorInformation
 {
-    constructor(public url : string)
+    lastResponse : Response
+    request : RequestOptions
+    username : string
+    password : string
+}
+
+export interface Authenticator
+{
+    getAuthenticationHeader(info : AuthenticatorInformation) : string
+    isValidResponse(response : Response) : boolean
+}
+
+export class DigestAuthenticator implements Authenticator
+{
+    md5(value : string) : string
     {
-        if(this.url.lastIndexOf('/') !== this.url.length - 1)
-            this.url += '/';
+        return crypto.createHash('md5').update(value).digest('hex');
     }
 
-    request(options : RequestOptions, callback : ResponseCallback)
+    find(info : AuthenticatorInformation, rex : RegExp, defaultValue ?: string) : string
     {
-        options.url = this.url + options.url;
-        request(options, callback);
+        const auth = info.lastResponse.headers['www-authenticate'] as string;
+        if(!auth)
+            return defaultValue;
+        
+        const value = rex.exec(auth);
+        if(!value[1])
+            return defaultValue;
+
+        return value[1];
     }
-    stream(options : RequestOptions) : Stream
+
+    getRealm(info : AuthenticatorInformation) : string
     {
-        options.url = this.url + options.url;
-        return stream(options);
+        return this.find(info, /[^a-zA-Z0-9-_]realm="([^"]+)"/);
+    }
+
+    getNonce(info : AuthenticatorInformation) : string
+    {
+        return this.find(info, /[^a-zA-Z0-9-_]nonce="([^"]+)"/);
+    }
+
+    getAuthenticationHeader(info : AuthenticatorInformation) : string
+    {
+        const realm = this.getRealm(info);
+        const nonce = this.getNonce(info);
+        let url = info.request.url;
+        if(url.indexOf('://') !== -1)
+        {
+            url = url.substring(url.indexOf('://') + 3);
+            url = url.substring(url.indexOf('/'));
+        }
+
+        if(!realm || !nonce)
+            return undefined;
+
+        const ha1 = this.md5(info.username + ':' + realm + ':' + (info.password ? info.password : ''));
+        const ha2 = this.md5(info.request.method + ':' + url);
+        const response = this.md5(ha1 + ':' + nonce + ':' + ha2);
+
+        return 'Digest username="' + info.username + '",realm="' + realm + '",nonce="' + nonce + '",uri="' + url + '",response="' + response + '"';
+    }
+
+    isValidResponse(response : Response) : boolean
+    {
+        return response && response.headers && !!response.headers['www-authenticate'];
+    }
+}
+
+export class BasicAuthenticator implements Authenticator
+{
+    getAuthenticationHeader(info : AuthenticatorInformation) : string
+    {
+        return 'Basic ' + new Buffer(info.username + ':' + (info.password ? info.password : '')).toString('base64');
+    }
+
+    isValidResponse() : boolean
+    {
+        return true;
+    }
+}
+
+export interface ConnectionOptions
+{
+    url : string
+    authenticator ?: Authenticator
+    username ?: string
+    password ?: string
+}
+
+export class Connection
+{
+    options : ConnectionOptions
+    lastAuthValidResponse : Response
+
+    constructor(url : string)
+    constructor(options : ConnectionOptions)
+    constructor(options : string | ConnectionOptions)
+    {
+        if(options.constructor === String)
+            options = { url: options as string };
+        this.options = options as ConnectionOptions;
+
+        if(this.options.url.lastIndexOf('/') === this.options.url.length - 1)
+            this.options.url = this.options.url.substring(0, this.options.url.length - 1);
+    }
+
+    protected wrapRequestOptions(options : RequestOptions, lastResponse ?: Response) : RequestOptions
+    {
+        if(!options.headers)
+            options.headers = {};
+        
+        if(this.options.authenticator)
+        {
+            if(this.options.authenticator.isValidResponse(lastResponse))
+                this.lastAuthValidResponse = lastResponse;
+            else 
+                lastResponse = this.lastAuthValidResponse;
+            
+            if(this.options.authenticator.isValidResponse(lastResponse))
+            {
+                options.headers['authorization'] = this.options.authenticator.getAuthenticationHeader({
+                    password: this.options.password,
+                    username: this.options.username,
+                    request: options,
+                    lastResponse
+                });
+            }
+        }
+
+        if(options.url.indexOf(this.options.url) !== 0)
+            options.url = this.options.url + options.url;
+        return options;
+    }
+    request(options : RequestOptions, callback : ResponseCallback, lastResponse ?: Response)
+    {
+        request(this.wrapRequestOptions(options, lastResponse), (e, res, body) => {
+            if(this.options.authenticator && this.options.authenticator.isValidResponse(res))
+                this.lastAuthValidResponse = res;
+            
+            if(lastResponse || e || res && res.statusCode !== 401 || !this.options.authenticator)
+                return callback(e, res, body);
+
+            this.request(options, callback, res);
+        });
+    }
+    stream(options : RequestOptions, lastResponse ?: Response) : Stream
+    {
+        return stream(this.wrapRequestOptions(options, lastResponse));
     }
     protected noBodyRequest(options : RequestOptions, callback : (error ?: Error) => void) : void
     {
@@ -55,6 +190,29 @@ export class Connection
                 return callback(e);
             if(res.statusCode >= 400)
                 return callback(new HTTPError(res));
+
+            callback();
+        })
+    }
+
+    prepareForStreaming(path : string, callback : (error ?: Error) => void) : void
+    prepareForStreaming(callback : (error ?: Error) => void) : void
+    prepareForStreaming(_path : string | ((error ?: Error) => void), _callback ?: (error ?: Error) => void) : void
+    {
+        const path = _callback ? _path as string : '/';
+        const callback = _callback ? _callback : _path as (error ?: Error) => void;
+
+        this.request({
+            url: path,
+            method: 'PROPFIND'
+        }, (e, res, body) => {
+            if(e)
+                return callback(e);
+            if(res.statusCode >= 400)
+                return callback(new HTTPError(res));
+
+            if(this.options.authenticator && this.options.authenticator.isValidResponse(res))
+                this.lastAuthValidResponse = res;
 
             callback();
         })

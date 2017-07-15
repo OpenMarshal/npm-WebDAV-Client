@@ -16,12 +16,45 @@ export declare class HTTPError extends Error {
 export interface Lock {
     uid: string;
 }
-export declare class Connection {
+export interface AuthenticatorInformation {
+    lastResponse: Response;
+    request: RequestOptions;
+    username: string;
+    password: string;
+}
+export interface Authenticator {
+    getAuthenticationHeader(info: AuthenticatorInformation): string;
+    isValidResponse(response: Response): boolean;
+}
+export declare class DigestAuthenticator implements Authenticator {
+    md5(value: string): string;
+    find(info: AuthenticatorInformation, rex: RegExp, defaultValue?: string): string;
+    getRealm(info: AuthenticatorInformation): string;
+    getNonce(info: AuthenticatorInformation): string;
+    getAuthenticationHeader(info: AuthenticatorInformation): string;
+    isValidResponse(response: Response): boolean;
+}
+export declare class BasicAuthenticator implements Authenticator {
+    getAuthenticationHeader(info: AuthenticatorInformation): string;
+    isValidResponse(): boolean;
+}
+export interface ConnectionOptions {
     url: string;
+    authenticator?: Authenticator;
+    username?: string;
+    password?: string;
+}
+export declare class Connection {
+    options: ConnectionOptions;
+    lastAuthValidResponse: Response;
     constructor(url: string);
-    request(options: RequestOptions, callback: ResponseCallback): void;
-    stream(options: RequestOptions): Stream;
+    constructor(options: ConnectionOptions);
+    protected wrapRequestOptions(options: RequestOptions, lastResponse?: Response): RequestOptions;
+    request(options: RequestOptions, callback: ResponseCallback, lastResponse?: Response): void;
+    stream(options: RequestOptions, lastResponse?: Response): Stream;
     protected noBodyRequest(options: RequestOptions, callback: (error?: Error) => void): void;
+    prepareForStreaming(path: string, callback: (error?: Error) => void): void;
+    prepareForStreaming(callback: (error?: Error) => void): void;
     exists(path: string, callback: (error: Error, exists: boolean) => void): void;
     get(path: string, callback: (error?: Error, body?: ContentType) => void): void;
     get(path: string): Stream;

@@ -40,7 +40,7 @@ export class Stream
     constructor(protected stream : req.Request)
     { }
 
-    on(event : 'error' | 'data' | 'end' | 'finish', callback : Function)
+    on(event : 'error' | 'data' | 'end' | 'finish' | 'complete', callback : Function)
     {
         switch(event)
         {

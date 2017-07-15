@@ -1,3 +1,5 @@
+"use strict";
+
 const client = require('../lib/index'),
       webdav = require('webdav-server').v2;
 

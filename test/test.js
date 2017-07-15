@@ -3,7 +3,10 @@
 const client = require('../lib/index'),
       webdav = require('webdav-server').v2;
 
+const servers = [];
+
 const server = new webdav.WebDAVServer();
+servers.push(server);
 const ctx = server.createExternalContext();
 
 const ANY = 15546213556767.1;
@@ -25,7 +28,7 @@ function done(text, error)
             console.log(' All tests passed!');
         else
             console.error(' ' + errors.length + ' error(s) occured!');
-        server.stop();
+        servers.forEach((s) => s.stop());
     }
 }
 function start(text, fn)
@@ -77,6 +80,60 @@ function start(text, fn)
 
 let connection;
 
+function testAuthenticators(type)
+{
+    start(type + ' authentication', (end, expected) => {
+        const userManager = new webdav.SimpleUserManager();
+        const user = userManager.addUser('toto', 'password', true);
+
+        const privileges = new webdav.SimplePathPrivilegeManager();
+        privileges.setRights(user, '/', [ 'all' ]);
+
+        const server = new webdav.WebDAVServer({
+            httpAuthentication: type === 'digest' ? new webdav.HTTPDigestAuthentication(userManager) : new webdav.HTTPBasicAuthentication(userManager),
+            privilegeManager: privileges,
+            port: 1900 + servers.length
+        });
+        servers.push(server);
+        const ctx = server.createExternalContext();
+        server.rootFileSystem().addSubTree(ctx, {
+            'file': webdav.ResourceType.File
+        }, (e) => {
+            if(e)
+                throw e;
+
+            server.start((s) => {
+                const connection = new client.Connection({
+                    url: 'http://localhost:' + s.address().port,
+                    authenticator: type === 'digest' ? new client.DigestAuthenticator() : new client.BasicAuthenticator(),
+                    username: 'toto',
+                    password: 'password'
+                });
+
+                start('"getProperties" on "/file" being authenticated (digest)', (end, expected) => {
+                    connection.getProperties('/file', (e, props) => {
+                        expected(e);
+                        end();
+                    })
+                })
+                
+                const connection2 = new client.Connection({
+                    url: 'http://localhost:' + s.address().port
+                });
+
+                start('"getProperties" on "/file" without being authenticated (digest)', (end, expected) => {
+                    connection2.getProperties('/file', (e, props) => {
+                        expected(e, ANY);
+                        end();
+                    })
+                })
+
+                end();
+            })
+        })
+    })
+}
+
 server.rootFileSystem().addSubTree(ctx, {
     'folder1': {
         'file2': webdav.ResourceType.File,
@@ -102,6 +159,9 @@ server.rootFileSystem().addSubTree(ctx, {
 
     server.start((s) => {
         connection = new client.Connection('http://localhost:' + s.address().port);
+
+        testAuthenticators('basic');
+        testAuthenticators('digest');
 
         testExists();
         testGetPut();

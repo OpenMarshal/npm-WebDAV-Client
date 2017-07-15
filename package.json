@@ -14,7 +14,7 @@
     "test": "node test/test.js"
   },
   "name": "webdav-client",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "author": "Adrien Castex <adrien.castex@gmail.com>",
   "license": "Unlicense",
   "repository": {

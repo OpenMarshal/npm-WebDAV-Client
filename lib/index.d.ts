@@ -24,9 +24,11 @@ export declare class Connection {
     protected noBodyRequest(options: RequestOptions, callback: (error?: Error) => void): void;
     exists(path: string, callback: (error: Error, exists: boolean) => void): void;
     get(path: string, callback: (error?: Error, body?: ContentType) => void): void;
-    get(path: string, callback: (error?: Error, body?: ContentType) => void): Stream;
+    get(path: string): Stream;
+    getObject<T>(path: string, callback: (error?: Error, body?: T) => void): void;
     put(path: string, content: ContentType, callback: (error?: Error) => void): void;
     put(path: string): Stream;
+    putObject<T>(path: string, content: T, callback: (error?: Error) => void): void;
     protected moveCopy(method: string, pathSource: string, pathDestination: string, _override: boolean | ((error?: Error) => void), _callback?: (error?: Error) => void): void;
     move(pathSource: string, pathDestination: string, override: boolean, callback: (error?: Error) => void): void;
     move(pathSource: string, pathDestination: string, callback: (error?: Error) => void): void;

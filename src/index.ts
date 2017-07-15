@@ -74,7 +74,7 @@ export class Connection
     }
 
     get(path : string, callback : (error ?: Error, body ?: ContentType) => void) : void
-    get(path : string, callback : (error ?: Error, body ?: ContentType) => void) : Stream
+    get(path : string) : Stream
     get(path : string, callback ?: (error ?: Error, body ?: ContentType) => void) : Stream
     {
         const options : RequestOptions = {
@@ -97,6 +97,23 @@ export class Connection
         { // Stream
             return this.stream(options);
         }
+    }
+    
+    getObject<T>(path : string, callback : (error ?: Error, body ?: T) => void) : void
+    {
+        this.get(path, (e, content) => {
+            if(e)
+                return callback(e);
+            
+            try
+            {
+                callback(null, JSON.parse(content.toString()));
+            }
+            catch(ex)
+            {
+                callback(ex);
+            }
+        })
     }
 
     put(path : string, content : ContentType, callback : (error ?: Error) => void) : void
@@ -124,6 +141,11 @@ export class Connection
         { // Stream
             return this.stream(options);
         }
+    }
+
+    putObject<T>(path : string, content : T, callback : (error ?: Error) => void) : void
+    {
+        this.put(path, JSON.stringify(content), callback);
     }
 
     protected moveCopy(method : string, pathSource : string, pathDestination : string, _override : boolean | ((error ?: Error) => void), _callback ?: (error ?: Error) => void)
@@ -267,7 +289,7 @@ export class Connection
         const propertyupdate = new XMLElementBuilder('D:propertyupdate', {
             'xmlns:D': 'DAV:'
         });
-        const prop = new XMLElementBuilder('D:set').ele('D:prop');
+        const prop = propertyupdate.ele('D:set').ele('D:prop');
         for(const name in properties)
             prop.ele(name, properties[name].attributes).add(properties[name].content);
 
@@ -290,7 +312,7 @@ export class Connection
         const propertyupdate = new XMLElementBuilder('D:propertyupdate', {
             'xmlns:D': 'DAV:'
         });
-        const prop = new XMLElementBuilder('D:remove').ele('D:prop');
+        const prop = propertyupdate.ele('D:remove').ele('D:prop');
         properties.forEach((p) => prop.ele(p));
 
         this.request({

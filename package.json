@@ -30,7 +30,6 @@
   "types": "./lib/index.d.ts",
   "dependencies": {
     "request": "^2.81.0",
-    "xml-js": "^1.3.2",
     "xml-js-builder": "^1.0.1"
   }
 }

@@ -31,8 +31,15 @@ connection.get('/path/of/my/file.txt', (e, content) => {
 ```javascript
 class Connection
 {
+    constructor(url : string)
+    constructor(options : ConnectionOptions)
+
     request(options : RequestOptions, callback : ResponseCallback) // Custom request
     stream(options : RequestOptions) : Stream // Custom streaming request
+    
+    // Might be needed before using the streaming form of the methods (put and get)
+    prepareForStreaming(path : string, callback : (error ?: Error) => void) : void
+    prepareForStreaming(callback : (error ?: Error) => void) : void
 
     readdir(path : string, callback : (error ?: Error, files ?: string[]) => void) : void
     exists(path : string, callback : (error : Error, exists : boolean) => void) : void
@@ -59,6 +66,18 @@ class Connection
     setProperties(path : string, properties : Properties, callback : (error ?: Error) => void) : void
     removeProperties(path : string, properties : string[], callback : (error ?: Error) => void) : void
     getProperties(path : string, callback : (error ?: Error, properties ?: Properties) => void) : void
+}
+```
+
+The `Connection` options :
+
+```javascript
+interface ConnectionOptions
+{
+    url : string
+    authenticator ?: Authenticator
+    username ?: string
+    password ?: string
 }
 ```
 

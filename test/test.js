@@ -86,6 +86,7 @@ server.rootFileSystem().addSubTree(ctx, {
     'file1': webdav.ResourceType.File,
     'file1.2': webdav.ResourceType.File,
     'file1.3': webdav.ResourceType.File,
+    'file1.5': webdav.ResourceType.File,
     'file.lock': webdav.ResourceType.File,
     'file.lock2': webdav.ResourceType.File,
     'file.move.1': webdav.ResourceType.File,
@@ -133,6 +134,23 @@ function testExists()
 
 function testGetPut()
 {
+    start('"putObject" on "/file1.5"', (end, expected) => {
+        connection.putObject('/file1.5', {
+            prop1: 'ok'
+        }, (e) => {
+            expected(e);
+
+            start('"getObject" on "/file1.5" after "putObject"', (end, expected) => {
+                connection.getObject('/file1.5', (e, obj) => {
+                    expected(e) && expected(obj, ANY) && expected(obj.prop1, 'ok');
+                    end();
+                })
+            })
+
+            end();
+        })
+    })
+
     start('"get" on "/file1"', (end, expected) => {
         connection.get('/file1', (e, body) => {
             expected(e) && expected(body.toString(), '');
@@ -155,6 +173,13 @@ function testGetPut()
             start('"get" on "/file1.2"', (end, expected) => {
                 connection.get('/file1.2', (e, body) => {
                     expected(e) && expected(body.toString(), content);
+                    end();
+                })
+            })
+            
+            start('"getObject" on "/file1.2" after "put" of no-JSON content', (end, expected) => {
+                connection.getObject('/file1.2', (e, obj) => {
+                    expected(e, ANY);
                     end();
                 })
             })
@@ -273,7 +298,7 @@ function testProperties()
             
             start('"getProperties" on "/file1" after "setProperties"', (end, expected) => {
                 connection.getProperties('/file1', (e, props) => {
-                    expected(e) && props && props['prop1'] && expected(props['prop1'].content, 'value value');
+                    expected(e) && expected(props, ANY) && expected(props['prop1'], ANY) && expected(props['prop1'].content, 'value value');
                     end();
                 })
             })
@@ -296,7 +321,7 @@ function testProperties()
                     
                     start('"getProperties" on "/file1.2" after "removeProperties"', (end, expected) => {
                         connection.getProperties('/file1.2', (e, props) => {
-                            expected(e) && props && expected(props['prop1']);
+                            expected(e) && expected(props, ANY) && expected(props['prop1']);
                             end();
                         })
                     })

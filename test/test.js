@@ -128,6 +128,45 @@ function testAuthenticators(type)
                     })
                 })
 
+                start('"prepareForStreaming" on "/file"', (end) => {
+                    connection.prepareForStreaming((e) => {
+                        expected(e);
+
+                        start('"put" as stream on "/file" while being authenticated', (end, expected) => {
+                            const content = 'This is the content';
+                            const wStream = connection.put('/file');
+                            wStream.on('error', (e) => expected(e))
+                            wStream.on('finish', () => {
+                                
+                                wStream.on('complete', (res) => {
+                                    expected(res.statusCode, 200) // 200 - OK
+                                });
+
+                                start('"get" as stream on "/file" while being authenticated', (end, expected) => {
+                                    const rStream = connection.get('/file');
+                                    let data = '';
+
+                                    rStream.on('error', (e) => expected(e))
+                                    rStream.on('end', () => {
+                                        expected(data, content);
+                                        end()
+                                    })
+                                    rStream.on('data', (chunk) => {
+                                        data += chunk.toString();
+                                    })
+                                })
+
+                                end();
+                            });
+                            wStream.end(content, (e) => {
+                                expected(e);
+                            });
+                        })
+
+                        end();
+                    })
+                })
+
                 end();
             })
         })

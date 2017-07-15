@@ -1,4 +1,4 @@
-# webdav-client [![npm Version](https://img.shields.io/npm/v/webdav-client.svg)](https://www.npmjs.com/package/webdav-client)
+# webdav-client [![npm Version](https://img.shields.io/npm/v/webdav-client.svg)](https://www.npmjs.com/package/webdav-client) [![Build Status](https://travis-ci.org/OpenMarshal/npm-WebDAV-Client.svg?branch=master)](https://travis-ci.org/OpenMarshal/npm-WebDAV-Client)
 
 This is a WebDAV client.
 

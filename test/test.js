@@ -78,7 +78,7 @@ function start(text, fn)
     })
 }
 
-let connection;
+let connection = true ? null : new client.Connection('');
 
 function testAuthenticators(type)
 {
@@ -326,6 +326,38 @@ function testGetPut()
             end();
         });
         wStream.end(content);
+    })
+    
+    start('"put" on "/file.pipe.in"', (end, expected) => {
+        const content = 'This is the content';
+        connection.put('/file.pipe.in', content, (e, body) => {
+            expected(e);
+
+            start('"put" as stream on "/file.pipe.out"', (end, expected) => {
+                const wStream = connection.put('/file.pipe.out');
+
+                start('"get" as stream on "/file.pipe.in"', (end2, expected) => {
+                    const rStream = connection.get('/file.pipe.in');
+
+                    rStream.pipe(wStream);
+                    rStream.on('error', (e) => expected(e))
+
+                    wStream.on('finish', () => {
+                        start('"get" on "/file.pipe.out"', (end, expected) => {
+                            connection.get('/file.pipe.out', (e, body) => {
+                                expected(e) && expected(body.toString(), content);
+                                end();
+                            })
+                        })
+
+                        end()
+                        end2()
+                    })
+                })
+            })
+
+            end();
+        })
     })
 }
 

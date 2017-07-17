@@ -2,6 +2,8 @@ import { XMLElement, XML, XMLElementBuilder } from 'xml-js-builder'
 import { request, stream, Stream, RequestOptions, Response, ContentType, ResponseCallback } from './request'
 import * as crypto from 'crypto'
 
+export * from './request'
+
 export interface Properties
 {
     [name : string] : {

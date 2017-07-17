@@ -1,5 +1,6 @@
 import { XMLElement } from 'xml-js-builder';
 import { Stream, RequestOptions, Response, ContentType, ResponseCallback } from './request';
+export * from './request';
 export interface Properties {
     [name: string]: {
         attributes: {

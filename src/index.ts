@@ -265,14 +265,16 @@ export class Connection
             if(e)
                 return callback(e);
             
+            let obj : T;
             try
             {
-                callback(null, JSON.parse(content.toString()));
+                obj = JSON.parse(content.toString());
             }
             catch(ex)
             {
-                callback(ex);
+                return callback(ex);
             }
+            callback(null, obj);
         })
     }
 

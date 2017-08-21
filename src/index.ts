@@ -7,10 +7,10 @@ export * from './request'
 export interface Properties
 {
     [name : string] : {
-        attributes : {
+        attributes ?: {
             [name : string] : string
         }
-        content : string | XMLElement[]
+        content ?: string | XMLElement[]
     }
 }
 

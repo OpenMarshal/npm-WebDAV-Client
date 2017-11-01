@@ -10,6 +10,7 @@
   ],
   "scripts": {
     "dev": "cd src && tsc -w",
+    "browserify": "browserify lib/browser.js > lib/browserified.js",
     "build": "cd src && tsc",
     "test": "node test/test.js"
   },

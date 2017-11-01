@@ -1,0 +1,17 @@
+<html>
+    <head>
+        <script src="../lib/browserified.js"></script>
+    </head>
+    <body>
+        <script>
+            const connection = new window.webdavClient.Connection('http://my-webdav-server:1900');
+
+            connection.get('/path/of/my/file.txt', (e, content) => {
+                if(e)
+                    throw e;
+                
+                console.log(content);
+            });
+        </script>
+    </body>
+</html>

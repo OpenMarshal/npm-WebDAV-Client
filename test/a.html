@@ -4,7 +4,7 @@
     </head>
     <body>
         <script>
-            const connection = new window.webdavClient.Connection('http://my-webdav-server:1900');
+            const connection = new webdavClient.Connection('http://my-webdav-server:1900');
 
             connection.get('/path/of/my/file.txt', (e, content) => {
                 if(e)

@@ -13,10 +13,14 @@ npm install webdav-client
 ## Usage
 
 ```javascript
-const client = require('webdav-client');
+import * as webdavClient from 'webdav-client'
+// or
+import { Connection } from 'webdav-client'
+// or
+const webdavClient = require('webdav-client');
 
 // Create the client object
-const connection = new client.Connection('http://my-webdav-server:1900');
+const connection = new webdavClient.Connection('http://my-webdav-server:1900');
 
 connection.get('/path/of/my/file.txt', (e, content) => {
     if(e)
@@ -28,7 +32,7 @@ connection.get('/path/of/my/file.txt', (e, content) => {
 
 ## Methods
 
-```javascript
+```typescript
 class Connection
 {
     constructor(url : string)
@@ -71,7 +75,7 @@ class Connection
 
 The `Connection` options :
 
-```javascript
+```typescript
 interface ConnectionOptions
 {
     url : string
@@ -109,7 +113,7 @@ To do custom requests, you can use the `request(...)` and `stream(...)` methods.
 
 They take a `RequestOptions` argument.
 
-```javascript
+```typescript
 interface RequestOptions
 {
     url : string
@@ -120,3 +124,35 @@ interface RequestOptions
     body ?: ContentType
 }
 ```
+
+## Web browser compatibility
+
+This library can be used in a web browser.
+
+You can produce the web browser library from your from with, for instance, `browserify` or you can use the "browserified" file itsef (located at `bin/browserified.js`).
+
+Here is the usage of the `browserified.js` file :
+
+```html
+<html>
+    <head>
+        <!-- Load the library -->
+        <script src="node_modules/webdav-client/lib/browserified.js"></script>
+
+        <!-- Usage of the library -->
+        <script>
+            const connection = new webdavClient.Connection('http://my-webdav-server:1900');
+
+            connection.get('/path/of/my/file.txt', (e, content) => {
+                if(e)
+                    throw e;
+                
+                console.log(content);
+            });
+        </script>
+    </head>
+    <body></body>
+</html>
+```
+
+Keep in mind that the library uses the `request` package, which might not be the most optimized package for web browsers.

@@ -129,7 +129,7 @@ interface RequestOptions
 
 This library can be used in a web browser.
 
-You can produce the web browser library from your from with, for instance, `browserify` or you can use the "browserified" file itsef (located at `lin/browserified.js`).
+You can produce the web browser library from your from with, for instance, `browserify` or you can use the "browserified" file itsef (located at `lib/browserified.js`).
 
 Here is the usage of the `browserified.js` file :
 

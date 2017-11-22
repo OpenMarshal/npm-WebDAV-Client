@@ -47,6 +47,22 @@ export interface Authenticator
     isValidResponse(response : Response) : boolean
 }
 
+export interface ConnectionReaddirComplexResult
+{
+    creationDate : Date
+    lastModified : Date
+    isDirectory : boolean
+    isFile : boolean
+    type : 'directory' | 'file'
+    size : number
+    href : string
+    name : string
+}
+export interface ConnectionReaddirOptions
+{
+    properties ?: boolean
+}
+
 export class DigestAuthenticator implements Authenticator
 {
     md5(value : string) : string
@@ -413,8 +429,16 @@ export class Connection
         }, callback)
     }
 
-    readdir(path : string, callback : (error ?: Error, files ?: string[]) => void) : void
+    readdir(path : string, callback : (error : Error, files ?: string[]) => void) : void
+    readdir(path : string, options : ConnectionReaddirOptions, callback : (error : Error, files ?: string[] | ConnectionReaddirComplexResult[]) => void) : void
+    readdir(path : string, _options : ConnectionReaddirOptions | ((error : Error, files ?: string[] | ConnectionReaddirComplexResult[]) => void), _callback ?: (error : Error, files ?: string[] | ConnectionReaddirComplexResult[]) => void) : void
     {
+        const options = _callback ? _options as ConnectionReaddirOptions : {} as ConnectionReaddirOptions;
+        const callback = _callback ? _callback : _options as ((error : Error, files ?: string[]) => void);
+        
+        if(options.properties === undefined || options.properties === null)
+            options.properties = false;
+
         this.request({
             url: path,
             method: 'PROPFIND',
@@ -429,15 +453,46 @@ export class Connection
             
             try
             {
-                const names = XML.parse(body)
-                    .find('DAV:multistatus')
-                    .findMany('DAV:response')
-                    .map((el) => el.find('DAV:href').findText())
-                    .filter((href) => href.length > href.indexOf(path) + path.length + 1)
-                    .map((href) => href.lastIndexOf('/') === href.length - 1 ? href.substr(0, href.length - 1) : href)
-                    .map((href) => href.substring(href.lastIndexOf('/') + 1))
-                
-                callback(null, names);
+                if(options.properties)
+                {
+                    const results = XML.parse(body)
+                        .find('DAV:multistatus')
+                        .findMany('DAV:response')
+                        .filter((el) => {
+                            const href = el.find('DAV:href').findText();
+                            return href.length > href.indexOf(path) + path.length + 1;
+                        })
+                        .map((el) => {
+                            const props = el.find('DAV:propstat').find('DAV:prop');
+                            const href = el.find('DAV:href').findText();
+                            const type = props.find('DAV:resourcetype').findIndex('DAV:collection') !== -1 ? 'directory' : 'file';
+
+                            return {
+                                creationDate: new Date(props.find('DAV:creationdate').findText()),
+                                lastModified: new Date(props.find('DAV:getlastmodified').findText()),
+                                type: type,
+                                isFile: type === 'file',
+                                isDirectory: type === 'directory',
+                                size: props.findIndex('DAV:getcontentlength') !== -1 ? parseInt(props.find('DAV:getcontentlength').findText()) : 0,
+                                href: href.lastIndexOf('/') === href.length - 1 ? href.slice(0, -1) : href,
+                                name: decodeURI(href.substring(href.lastIndexOf('/') + 1))
+                            } as ConnectionReaddirComplexResult;
+                        });
+                    
+                    callback(null, results);
+                }
+                else
+                {
+                    const names = XML.parse(body)
+                        .find('DAV:multistatus')
+                        .findMany('DAV:response')
+                        .map((el) => el.find('DAV:href').findText())
+                        .filter((href) => href.length > href.indexOf(path) + path.length + 1)
+                        .map((href) => href.lastIndexOf('/') === href.length - 1 ? href.substr(0, href.length - 1) : href)
+                        .map((href) => decodeURI(href.substring(href.lastIndexOf('/') + 1)))
+                    
+                    callback(null, names);
+                }
             }
             catch(ex)
             {

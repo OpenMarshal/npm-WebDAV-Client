@@ -369,6 +369,25 @@ function testReadDir()
             end();
         })
     })
+    
+    start('"readdir" on "/folder1"', (end, expected) => {
+        connection.readdir('/folder1', {
+            properties: true
+        }, (e, files) => {
+            expected(e) && expected(Array.isArray(files), true) && expected(files.length, 3);
+            files.forEach((file) => {
+                expected(!!file.creationDate, true);
+                expected(!!file.lastModified, true);
+                expected(file.isFile === true || file.isFile === false, true);
+                expected(file.isDirectory === true || file.isDirectory === false, true);
+                expected(!!file.type, true);
+                expected(!!file.href, true);
+                expected(!!file.name, true);
+            });
+
+            end();
+        })
+    })
 
     start('"readdir" on undefined', (end, expected) => {
         connection.readdir('/folderX', (e, files) => {
@@ -376,9 +395,27 @@ function testReadDir()
             end();
         })
     })
+    
+    start('"readdir" on undefined', (end, expected) => {
+        connection.readdir('/folderX', {
+            properties: true
+        }, (e, files) => {
+            expected(e, ANY);
+            end();
+        })
+    })
 
     start('"readdir" on "/file1"', (end, expected) => {
         connection.readdir('/file1', (e, files) => {
+            expected(e) && expected(files, [ ]);
+            end();
+        })
+    })
+    
+    start('"readdir" on "/file1"', (end, expected) => {
+        connection.readdir('/file1', {
+            properties: true
+        }, (e, files) => {
             expected(e) && expected(files, [ ]);
             end();
         })

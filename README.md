@@ -42,34 +42,36 @@ class Connection
     stream(options : RequestOptions) : Stream // Custom streaming request
     
     // Might be needed before using the streaming form of the methods (put and get)
-    prepareForStreaming(path : string, callback : (error ?: Error) => void) : void
-    prepareForStreaming(callback : (error ?: Error) => void) : void
+    prepareForStreaming(path : string, callback : (error : Error) => void) : void
+    prepareForStreaming(callback : (error : Error) => void) : void
 
-    readdir(path : string, callback : (error ?: Error, files ?: string[]) => void) : void
+    readdir(path : string, callback : (error : Error, files ?: string[]) => void) : void
+    readdir(path : string, options : ConnectionReaddirOptions, callback : (error : Error, files : string[] | ConnectionReaddirComplexResult[]) => void) : void
+
     exists(path : string, callback : (error : Error, exists : boolean) => void) : void
 
-    mkdir(path : string, callback : (error ?: Error) => void) : void
-    delete(path : string, callback : (error ?: Error) => void) : void
+    mkdir(path : string, callback : (error : Error) => void) : void
+    delete(path : string, callback : (error : Error) => void) : void
 
-    get(path : string, callback : (error ?: Error, body ?: ContentType) => void) : void
-    get(path : string, callback : (error ?: Error, body ?: ContentType) => void) : Stream
+    get(path : string, callback : (error : Error, body : ContentType) => void) : void
+    get(path : string, callback : (error : Error, body : ContentType) => void) : Stream
 
-    put(path : string, content : ContentType, callback : (error ?: Error) => void) : void
+    put(path : string, content : ContentType, callback : (error : Error) => void) : void
     put(path : string) : Stream
     
-    move(pathSource : string, pathDestination : string, override : boolean, callback : (error ?: Error) => void) : void
-    move(pathSource : string, pathDestination : string, callback : (error ?: Error) => void) : void
+    move(pathSource : string, pathDestination : string, override : boolean, callback : (error : Error) => void) : void
+    move(pathSource : string, pathDestination : string, callback : (error : Error) => void) : void
 
-    copy(pathSource : string, pathDestination : string, override : boolean, callback : (error ?: Error) => void) : void
-    copy(pathSource : string, pathDestination : string, callback : (error ?: Error) => void) : void
+    copy(pathSource : string, pathDestination : string, override : boolean, callback : (error : Error) => void) : void
+    copy(pathSource : string, pathDestination : string, callback : (error : Error) => void) : void
     
     lock(path : string, callback : (error ?: Error, lockUID ?: Lock) => void) : void
-    refreshLock(path : string, lock : string | Lock, callback : (error ?: Error) => void) : void
-    unlock(path : string, lock : string | Lock, callback : (error ?: Error) => void) : void
+    refreshLock(path : string, lock : string | Lock, callback : (error : Error) => void) : void
+    unlock(path : string, lock : string | Lock, callback : (error : Error) => void) : void
 
-    setProperties(path : string, properties : Properties, callback : (error ?: Error) => void) : void
-    removeProperties(path : string, properties : string[], callback : (error ?: Error) => void) : void
-    getProperties(path : string, callback : (error ?: Error, properties ?: Properties) => void) : void
+    setProperties(path : string, properties : Properties, callback : (error : Error) => void) : void
+    removeProperties(path : string, properties : string[], callback : (error : Error) => void) : void
+    getProperties(path : string, callback : (error : Error, properties : Properties) => void) : void
 }
 ```
 
@@ -82,6 +84,33 @@ interface ConnectionOptions
     authenticator ?: Authenticator
     username ?: string
     password ?: string
+}
+```
+
+The `ConnectionReaddirOptions` interface :
+
+```typescript
+interface ConnectionReaddirOptions
+{
+    // true = get a ConnectionReaddirComplexResult Array as callback result
+    // false (default) = get a String Array as callback result
+    properties ?: boolean
+}
+```
+
+The `ConnectionReaddirComplexResult` interface :
+
+```typescript
+interface ConnectionReaddirComplexResult
+{
+    creationDate : Date
+    lastModified : Date
+    isDirectory : boolean
+    isFile : boolean
+    type : 'directory' | 'file'
+    size : number
+    href : string
+    name : string
 }
 ```
 

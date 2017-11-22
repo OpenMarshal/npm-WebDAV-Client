@@ -27,6 +27,19 @@ export interface Authenticator {
     getAuthenticationHeader(info: AuthenticatorInformation): string;
     isValidResponse(response: Response): boolean;
 }
+export interface ConnectionReaddirComplexResult {
+    creationDate: Date;
+    lastModified: Date;
+    isDirectory: boolean;
+    isFile: boolean;
+    type: 'directory' | 'file';
+    size: number;
+    href: string;
+    name: string;
+}
+export interface ConnectionReaddirOptions {
+    properties?: boolean;
+}
 export declare class DigestAuthenticator implements Authenticator {
     md5(value: string): string;
     find(info: AuthenticatorInformation, rex: RegExp, defaultValue?: string): string;
@@ -73,7 +86,8 @@ export declare class Connection {
     lock(path: string, callback: (error?: Error, lockUID?: Lock) => void): void;
     refreshLock(path: string, lock: string | Lock, callback: (error?: Error) => void): void;
     unlock(path: string, lock: string | Lock, callback: (error?: Error) => void): void;
-    readdir(path: string, callback: (error?: Error, files?: string[]) => void): void;
+    readdir(path: string, callback: (error: Error, files?: string[]) => void): void;
+    readdir(path: string, options: ConnectionReaddirOptions, callback: (error: Error, files?: string[] | ConnectionReaddirComplexResult[]) => void): void;
     setProperties(path: string, properties: Properties, callback: (error?: Error) => void): void;
     removeProperties(path: string, properties: string[], callback: (error?: Error) => void): void;
     getProperties(path: string, callback: (error?: Error, properties?: Properties) => void): void;

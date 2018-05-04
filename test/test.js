@@ -5,6 +5,33 @@ const client = require('../lib/index'),
 
 const servers = [];
 
+const subTree = {
+    'folder1': {
+        'file2': webdav.ResourceType.File,
+        'file2.2': webdav.ResourceType.File,
+        'file2.3': webdav.ResourceType.File
+    },
+    'folder test é': {
+        'file1': webdav.ResourceType.File
+    },
+    'file1': webdav.ResourceType.File,
+    'file1.2': webdav.ResourceType.File,
+    'file1.3': webdav.ResourceType.File,
+    'file1.5': webdav.ResourceType.File,
+    'file.lock': webdav.ResourceType.File,
+    'file.lock2': webdav.ResourceType.File,
+    'file.move.1': webdav.ResourceType.File,
+    'file.move.2': webdav.ResourceType.File,
+    'file.move.3': webdav.ResourceType.File,
+    'file.copy.1': webdav.ResourceType.File,
+    'file.copy.2': webdav.ResourceType.File,
+    'file.copy.3': webdav.ResourceType.File,
+    'fileToDelete': webdav.ResourceType.File,
+    'file.pipe.in': webdav.ResourceType.File,
+    'file.new': webdav.ResourceType.File,
+    'file1.new': webdav.ResourceType.File
+};
+
 const server = new webdav.WebDAVServer();
 servers.push(server);
 const ctx = server.createExternalContext();
@@ -173,26 +200,7 @@ function testAuthenticators(type)
     })
 }
 
-server.rootFileSystem().addSubTree(ctx, {
-    'folder1': {
-        'file2': webdav.ResourceType.File,
-        'file2.2': webdav.ResourceType.File,
-        'file2.3': webdav.ResourceType.File
-    },
-    'file1': webdav.ResourceType.File,
-    'file1.2': webdav.ResourceType.File,
-    'file1.3': webdav.ResourceType.File,
-    'file1.5': webdav.ResourceType.File,
-    'file.lock': webdav.ResourceType.File,
-    'file.lock2': webdav.ResourceType.File,
-    'file.move.1': webdav.ResourceType.File,
-    'file.move.2': webdav.ResourceType.File,
-    'file.move.3': webdav.ResourceType.File,
-    'file.copy.1': webdav.ResourceType.File,
-    'file.copy.2': webdav.ResourceType.File,
-    'file.copy.3': webdav.ResourceType.File,
-    'fileToDelete': webdav.ResourceType.File
-}, (e) => {
+server.rootFileSystem().addSubTree(ctx, subTree, (e) => {
     if(e)
         throw e;
 
@@ -205,6 +213,7 @@ server.rootFileSystem().addSubTree(ctx, {
         testExists();
         testGetPut();
         testReadDir();
+        testReadDirQueriedPathEntryBug();
         testProperties();
         testMkDir();
         testDelete();
@@ -356,6 +365,31 @@ function testGetPut()
                 })
             })
 
+            end();
+        })
+    })
+}
+
+function testReadDirQueriedPathEntryBug() {
+    start('"readdir" on "/', (end, expected) => {
+        connection.readdir('/', (e, files) => {
+            expected(e) && expected(files, Object.keys(subTree));
+            end();
+        })
+    })
+
+    start('"readdir" on "/test folder é', (end, expected) => {
+        connection.readdir('/folder test é', (e, files) => {
+            expected(e) && expected(files, [ 'file1' ]);
+            end();
+        })
+    })
+
+    // Some WebDAV implementation will return 404s if the
+    // URL is not escaped, so this needs to work too.
+    start('"readdir" on escaped-"/test folder é', (end, expected) => {
+        connection.readdir(encodeURI('/folder test é'), (e, files) => {
+            expected(e) && expected(files, [ 'file1' ]);
             end();
         })
     })

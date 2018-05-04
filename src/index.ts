@@ -1,6 +1,8 @@
 import { XMLElement, XML, XMLElementBuilder } from 'xml-js-builder'
 import { request, stream, Stream, RequestOptions, Response, ContentType, ResponseCallback } from './request'
 import * as crypto from 'crypto'
+import * as Path from 'path';
+import * as Url from 'url';
 
 export * from './request'
 
@@ -453,46 +455,42 @@ export class Connection
             
             try
             {
-                if(options.properties)
-                {
-                    const results = XML.parse(body)
-                        .find('DAV:multistatus')
-                        .findMany('DAV:response')
-                        .filter((el) => {
-                            const href = el.find('DAV:href').findText();
-                            return href.length > href.indexOf(path) + path.length + 1;
-                        })
-                        .map((el) => {
+                  const decodedPath = decodeURI(path);
+
+                  const results = XML.parse(body)
+                      .find('DAV:multistatus')
+                      .findMany('DAV:response')
+                      .map(el => {
+                        const href = el.find('DAV:href').findText(),
+                              hrefWithoutTrailingSlash = (href.lastIndexOf('/') === href.length - 1 ? href.slice(0, -1) : href),
+                              fullPath = decodeURI(Url.parse(href).pathname),
+                              name = Path.basename(fullPath);
+
+                        return { el, hrefWithoutTrailingSlash, fullPath, name };
+                      })
+                      .filter(({ fullPath }) => fullPath !== decodedPath && fullPath !== `${decodedPath}/`)
+                      .map(({ el, hrefWithoutTrailingSlash, name }) => {
+                          if (options.properties) {
                             const props = el.find('DAV:propstat').find('DAV:prop');
-                            const href = el.find('DAV:href').findText();
                             const type = props.find('DAV:resourcetype').findIndex('DAV:collection') !== -1 ? 'directory' : 'file';
 
                             return {
+                                name,
+
                                 creationDate: new Date(props.find('DAV:creationdate').findText()),
                                 lastModified: new Date(props.find('DAV:getlastmodified').findText()),
                                 type: type,
                                 isFile: type === 'file',
                                 isDirectory: type === 'directory',
                                 size: props.findIndex('DAV:getcontentlength') !== -1 ? parseInt(props.find('DAV:getcontentlength').findText()) : 0,
-                                href: href.lastIndexOf('/') === href.length - 1 ? href.slice(0, -1) : href,
-                                name: decodeURI(href.substring(href.lastIndexOf('/') + 1))
+                                href: hrefWithoutTrailingSlash
                             } as ConnectionReaddirComplexResult;
-                        });
-                    
-                    callback(null, results);
-                }
-                else
-                {
-                    const names = XML.parse(body)
-                        .find('DAV:multistatus')
-                        .findMany('DAV:response')
-                        .map((el) => el.find('DAV:href').findText())
-                        .filter((href) => href.length > href.indexOf(path) + path.length + 1)
-                        .map((href) => href.lastIndexOf('/') === href.length - 1 ? href.substr(0, href.length - 1) : href)
-                        .map((href) => decodeURI(href.substring(href.lastIndexOf('/') + 1)))
-                    
-                    callback(null, names);
-                }
+                          }
+
+                          return name;
+                      });
+
+                callback(null, results as any);
             }
             catch(ex)
             {

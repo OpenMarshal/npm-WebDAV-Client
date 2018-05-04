@@ -148,6 +148,8 @@ export class Connection
     options : ConnectionOptions
     lastAuthValidResponse : Response
 
+    private root : string
+
     constructor(url : string)
     constructor(options : ConnectionOptions)
     constructor(options : string | ConnectionOptions)
@@ -158,6 +160,12 @@ export class Connection
 
         if(this.options.url.lastIndexOf('/') === this.options.url.length - 1)
             this.options.url = this.options.url.substring(0, this.options.url.length - 1);
+
+        this.root = Url.parse(this.options.url).pathname;
+
+        if (this.root.slice(-1)[0] !== '/') {
+            this.root += '/';
+        }
     }
 
     protected wrapRequestOptions(options : RequestOptions, lastResponse ?: Response) : RequestOptions
@@ -461,9 +469,13 @@ export class Connection
                       .find('DAV:multistatus')
                       .findMany('DAV:response')
                       .map(el => {
-                        const href = el.find('DAV:href').findText(),
+                        const fullPathStart = this.root.length - 1;
+
+                        const removeRoot  = this.root !== '/',
+                              href = el.find('DAV:href').findText(),
+                              pathname = Url.parse(href).pathname,
+                              fullPath = decodeURI(pathname.slice(fullPathStart)),
                               hrefWithoutTrailingSlash = (href.lastIndexOf('/') === href.length - 1 ? href.slice(0, -1) : href),
-                              fullPath = decodeURI(Url.parse(href).pathname),
                               name = Path.basename(fullPath);
 
                         return { el, hrefWithoutTrailingSlash, fullPath, name };

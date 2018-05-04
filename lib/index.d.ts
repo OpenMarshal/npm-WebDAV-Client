@@ -61,6 +61,7 @@ export interface ConnectionOptions {
 export declare class Connection {
     options: ConnectionOptions;
     lastAuthValidResponse: Response;
+    private root;
     constructor(url: string);
     constructor(options: ConnectionOptions);
     protected wrapRequestOptions(options: RequestOptions, lastResponse?: Response): RequestOptions;

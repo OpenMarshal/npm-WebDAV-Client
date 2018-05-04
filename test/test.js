@@ -371,7 +371,7 @@ function testGetPut()
 }
 
 function testReadDirQueriedPathEntryBug() {
-    start('"readdir" on "/', (end, expected) => {
+    start('"readdir" on "/"', (end, expected) => {
         connection.readdir('/', (e, files) => {
             expected(e) && expected(files, Object.keys(subTree));
             end();

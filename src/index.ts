@@ -471,8 +471,7 @@ export class Connection
                       .map(el => {
                         const fullPathStart = this.root.length - 1;
 
-                        const removeRoot  = this.root !== '/',
-                              href = el.find('DAV:href').findText(),
+                        const href = el.find('DAV:href').findText(),
                               pathname = Url.parse(href).pathname,
                               fullPath = decodeURI(pathname.slice(fullPathStart)),
                               hrefWithoutTrailingSlash = (href.lastIndexOf('/') === href.length - 1 ? href.slice(0, -1) : href),

@@ -378,7 +378,7 @@ function testReadDirQueriedPathEntryBug() {
         })
     })
 
-    start('"readdir" on "/test folder é', (end, expected) => {
+    start('"readdir" on "/test folder é"', (end, expected) => {
         connection.readdir('/folder test é', (e, files) => {
             expected(e) && expected(files, [ 'file1' ]);
             end();
@@ -387,7 +387,7 @@ function testReadDirQueriedPathEntryBug() {
 
     // Some WebDAV implementation will return 404s if the
     // URL is not escaped, so this needs to work too.
-    start('"readdir" on escaped-"/test folder é', (end, expected) => {
+    start('"readdir" on escaped-"/test folder é"', (end, expected) => {
         connection.readdir(encodeURI('/folder test é'), (e, files) => {
             expected(e) && expected(files, [ 'file1' ]);
             end();

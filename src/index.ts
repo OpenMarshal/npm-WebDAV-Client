@@ -466,22 +466,23 @@ export class Connection
                   const decodedPath = decodeURI(path);
 
                   const results = XML.parse(body)
-                      .find('DAV:multistatus')
-                      .findMany('DAV:response')
-                      .map(el => {
+                    .find('DAV:multistatus')
+                    .findMany('DAV:response')
+                    .map(el => {
                         const fullPathStart = this.root.length - 1;
 
                         const href = el.find('DAV:href').findText(),
-                              pathname = Url.parse(href).pathname,
-                              fullPath = decodeURI(pathname.slice(fullPathStart)),
-                              hrefWithoutTrailingSlash = (href.lastIndexOf('/') === href.length - 1 ? href.slice(0, -1) : href),
-                              name = Path.basename(fullPath);
+                            pathname = Url.parse(href).pathname,
+                            fullPath = decodeURI(pathname.slice(fullPathStart)),
+                            hrefWithoutTrailingSlash = (href.lastIndexOf('/') === href.length - 1 ? href.slice(0, -1) : href),
+                            name = Path.basename(fullPath);
 
                         return { el, hrefWithoutTrailingSlash, fullPath, name };
-                      })
-                      .filter(({ fullPath }) => fullPath !== decodedPath && fullPath !== `${decodedPath}/`)
-                      .map(({ el, hrefWithoutTrailingSlash, name }) => {
-                          if (options.properties) {
+                    })
+                    .filter(({ fullPath }) => fullPath !== decodedPath && fullPath !== `${decodedPath}/`)
+                    .map(({ el, hrefWithoutTrailingSlash, name }) => {
+                        if(options.properties)
+                        {
                             const props = el.find('DAV:propstat').find('DAV:prop');
                             const type = props.find('DAV:resourcetype').findIndex('DAV:collection') !== -1 ? 'directory' : 'file';
 
@@ -496,10 +497,10 @@ export class Connection
                                 size: props.findIndex('DAV:getcontentlength') !== -1 ? parseInt(props.find('DAV:getcontentlength').findText()) : 0,
                                 href: hrefWithoutTrailingSlash
                             } as ConnectionReaddirComplexResult;
-                          }
+                        }
 
-                          return name;
-                      });
+                        return name;
+                    });
 
                 callback(null, results as any);
             }

@@ -11,7 +11,7 @@ const subTree = {
         'file2.2': webdav.ResourceType.File,
         'file2.3': webdav.ResourceType.File
     },
-    'folder test é': {
+    'folder test é &': {
         'file1': webdav.ResourceType.File
     },
     'file1': webdav.ResourceType.File,
@@ -378,8 +378,8 @@ function testReadDirQueriedPathEntryBug() {
         })
     })
 
-    start('"readdir" on "/test folder é"', (end, expected) => {
-        connection.readdir('/folder test é', (e, files) => {
+    start('"readdir" on "/test folder é &"', (end, expected) => {
+        connection.readdir('/folder test é &', (e, files) => {
             expected(e) && expected(files, [ 'file1' ]);
             end();
         })
@@ -387,8 +387,8 @@ function testReadDirQueriedPathEntryBug() {
 
     // Some WebDAV implementation will return 404s if the
     // URL is not escaped, so this needs to work too.
-    start('"readdir" on escaped-"/test folder é"', (end, expected) => {
-        connection.readdir(encodeURI('/folder test é'), (e, files) => {
+    start('"readdir" on escaped-"/test folder é &"', (end, expected) => {
+        connection.readdir('/folder%20test%20%C3%A9%20%26', (e, files) => {
             expected(e) && expected(files, [ 'file1' ]);
             end();
         })

@@ -463,7 +463,7 @@ export class Connection
             
             try
             {
-                  const decodedPath = decodeURI(path);
+                  const decodedPath = decodeURIComponent(path);
 
                   const results = XML.parse(body)
                     .find('DAV:multistatus')
@@ -473,7 +473,7 @@ export class Connection
 
                         const href = el.find('DAV:href').findText(),
                             pathname = Url.parse(href).pathname,
-                            fullPath = decodeURI(pathname.slice(fullPathStart)),
+                            fullPath = decodeURIComponent(pathname.slice(fullPathStart)),
                             hrefWithoutTrailingSlash = (href.lastIndexOf('/') === href.length - 1 ? href.slice(0, -1) : href),
                             name = Path.basename(fullPath);
 

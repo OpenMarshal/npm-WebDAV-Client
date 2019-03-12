@@ -489,7 +489,7 @@ export class Connection
                             return {
                                 name,
 
-                                creationDate: new Date(props.find('DAV:creationdate').findText()),
+                                creationDate: props.findIndex('DAV:creationdate') !== -1 ? new Date(props.find('DAV:creationdate').findText()) : undefined,
                                 lastModified: new Date(props.find('DAV:getlastmodified').findText()),
                                 type: type,
                                 isFile: type === 'file',

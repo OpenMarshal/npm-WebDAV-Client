@@ -126,7 +126,7 @@ export class BasicAuthenticator implements Authenticator
 {
     getAuthenticationHeader(info : AuthenticatorInformation) : string
     {
-        return 'Basic ' + new Buffer(info.username + ':' + (info.password ? info.password : '')).toString('base64');
+        return 'Basic ' + Buffer.from(info.username + ':' + (info.password ? info.password : '')).toString('base64');
     }
 
     isValidResponse() : boolean
@@ -399,7 +399,7 @@ export class Connection
             if(res.statusCode >= 400)
                 return callback(new HTTPError(res));
             
-            const xml = XML.parse(body);
+            const xml = XML.parse(Buffer.isBuffer(body) ? Int8Array.from(body) : body);
             try
             {
                 callback(null, {
@@ -465,7 +465,7 @@ export class Connection
             {
                   const decodedPath = decodeURIComponent(path);
 
-                  const results = XML.parse(body)
+                  const results = XML.parse(Buffer.isBuffer(body) ? Int8Array.from(body) : body)
                     .find('DAV:multistatus')
                     .findMany('DAV:response')
                     .map(el => {
@@ -572,7 +572,7 @@ export class Connection
             
             try
             {
-                const properties = XML.parse(body)
+                const properties = XML.parse(Buffer.isBuffer(body) ? Int8Array.from(body) : body)
                     .find('DAV:multistatus')
                     .find('DAV:response')
                     .find('DAV:propstat')

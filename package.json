@@ -9,6 +9,7 @@
     "client"
   ],
   "scripts": {
+    "prepare": "npm run build && npm run browserify",
     "dev": "cd src && tsc -w",
     "browserify": "browserify lib/browser.js > lib/browserified.js",
     "build": "cd src && tsc",

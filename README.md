@@ -72,6 +72,7 @@ class Connection
     setProperties(path : string, properties : Properties, callback : (error : Error) => void) : void
     removeProperties(path : string, properties : string[], callback : (error : Error) => void) : void
     getProperties(path : string, callback : (error : Error, properties : Properties) => void) : void
+    getProperties(path : string, options : ConnectionReaddirOptions, callback : (error : Error, properties : Properties) => void) : void
 }
 ```
 
@@ -95,6 +96,24 @@ interface ConnectionReaddirOptions
     // true = get a ConnectionReaddirComplexResult Array as callback result
     // false (default) = get a String Array as callback result
     properties ?: boolean
+    // An array of properties which will be sent with the PROPFIND request
+    extraProperties: ConnectionReaddirProperty[]
+}
+```
+
+The `ConnectionReaddirOptions` interface :
+
+```typescript
+interface ConnectionReaddirProperty
+{
+    namespace: string
+    namespaceShort: string
+    element: string
+    // Default value. If undefined and the XML response doesn't have this element, it will not be returned
+    default?: any
+    // true = It will be cast to number | string | boolean
+    // false (default) = it is returned as string
+    nativeType?: boolean
 }
 ```
 
@@ -111,6 +130,9 @@ interface ConnectionReaddirComplexResult
     size : number
     href : string
     name : string
+    extraProperties: {
+        [name : string] : string | number | boolean
+    }
 }
 ```
 

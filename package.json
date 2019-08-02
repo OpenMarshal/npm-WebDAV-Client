@@ -33,6 +33,7 @@
   "dependencies": {
     "lodash.uniqby": "^4.7.0",
     "request": "^2.81.0",
-    "xml-js-builder": "^1.0.1"
+    "xml-js-builder": "^1.0.1",
+    "typescript": "^3.5.3"
   }
 }

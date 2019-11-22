@@ -1,10 +1,26 @@
-import { XMLElement, XML, XMLElementBuilder } from 'xml-js-builder'
-import { request, stream, Stream, RequestOptions, Response, ContentType, ResponseCallback } from './request'
-import * as crypto from 'crypto'
-import * as Path from 'path';
-import * as Url from 'url';
+import * as crypto  from 'crypto';
+import * as uniqBy  from 'lodash.uniqby';
+import * as Path    from 'path';
+import * as Url     from 'url';
 
-export * from './request'
+import {
+    XML,
+    XMLElement,
+    XMLElementBuilder,
+    XMLElementUtil
+} from 'xml-js-builder';
+
+import {
+    request,
+    stream,
+    Stream,
+    RequestOptions,
+    Response,
+    ContentType,
+    ResponseCallback
+} from './request';
+
+export * from './request';
 
 export interface Properties
 {
@@ -59,10 +75,23 @@ export interface ConnectionReaddirComplexResult
     size : number
     href : string
     name : string
+    extraProperties: {
+        [name : string] : string | number | boolean
+    }
 }
 export interface ConnectionReaddirOptions
 {
     properties ?: boolean
+    extraProperties: ConnectionReaddirProperty[]
+}
+
+export interface ConnectionReaddirProperty
+{
+    namespace: string
+    namespaceShort: string
+    element: string
+    default?: any
+    nativeType?: boolean
 }
 
 export class DigestAuthenticator implements Authenticator
@@ -126,7 +155,7 @@ export class BasicAuthenticator implements Authenticator
 {
     getAuthenticationHeader(info : AuthenticatorInformation) : string
     {
-        return 'Basic ' + new Buffer(info.username + ':' + (info.password ? info.password : '')).toString('base64');
+        return 'Basic ' + Buffer.from(info.username + ':' + (info.password ? info.password : '')).toString('base64');
     }
 
     isValidResponse() : boolean
@@ -399,7 +428,7 @@ export class Connection
             if(res.statusCode >= 400)
                 return callback(new HTTPError(res));
             
-            const xml = XML.parse(body);
+            const xml = XML.parse(Buffer.isBuffer(body) ? Int8Array.from(body) : body);
             try
             {
                 callback(null, {
@@ -449,12 +478,15 @@ export class Connection
         if(options.properties === undefined || options.properties === null)
             options.properties = false;
 
+        const [findProps, extraProperties] = createPropFindBody(options);
+
         this.request({
             url: path,
             method: 'PROPFIND',
             headers: {
                 depth: '1'
-            }
+            },
+            body: (options.properties ? findProps.toXML() : '')
         }, (e, res, body) => {
             if(e)
                 return callback(e);
@@ -465,7 +497,7 @@ export class Connection
             {
                   const decodedPath = decodeURIComponent(path);
 
-                  const results = XML.parse(body)
+                  const results = XML.parse(Buffer.isBuffer(body) ? Int8Array.from(body) : body)
                     .find('DAV:multistatus')
                     .findMany('DAV:response')
                     .map(el => {
@@ -486,17 +518,33 @@ export class Connection
                             const props = el.find('DAV:propstat').find('DAV:prop');
                             const type = props.find('DAV:resourcetype').findIndex('DAV:collection') !== -1 ? 'directory' : 'file';
 
-                            return {
+                            const result = {
                                 name,
 
-                                creationDate: new Date(props.find('DAV:creationdate').findText()),
+                                creationDate: props.findIndex('DAV:creationdate') !== -1 ? new Date(props.find('DAV:creationdate').findText()) : undefined,
                                 lastModified: new Date(props.find('DAV:getlastmodified').findText()),
                                 type: type,
                                 isFile: type === 'file',
                                 isDirectory: type === 'directory',
                                 size: props.findIndex('DAV:getcontentlength') !== -1 ? parseInt(props.find('DAV:getcontentlength').findText()) : 0,
-                                href: hrefWithoutTrailingSlash
+                                href: hrefWithoutTrailingSlash,
                             } as ConnectionReaddirComplexResult;
+
+                            if (extraProperties.length > 0) {
+                                result.extraProperties = {};
+                                extraProperties.forEach(extraProperty => {
+                                    if (props.findIndex(`${extraProperty.namespace}${extraProperty.element}`) !== -1) {
+                                        result.extraProperties[extraProperty.element] = (extraProperty.nativeType ? 
+                                            toNativeType(props.find(`${extraProperty.namespace}${extraProperty.element}`).findText()) : 
+                                            props.find(`${extraProperty.namespace}${extraProperty.element}`).findText()
+                                        );
+                                    } else if (extraProperty.default) {
+                                        result.extraProperties[extraProperty.element] = extraProperty.default;
+                                    }
+                                });
+                            }
+
+                            return result;
                         }
 
                         return name;
@@ -557,13 +605,21 @@ export class Connection
     }
 
     getProperties(path : string, callback : (error ?: Error, properties ?: Properties) => void) : void
+    getProperties(path : string, options : ConnectionReaddirOptions, callback : (error : Error, properties ?: Properties) => void) : void
+    getProperties(path : string, _options : ConnectionReaddirOptions | ((error : Error, properties ?: Properties) => void), _callback ?: (error : Error, properties ?: Properties) => void) : void
     {
+        const options = _callback ? _options as ConnectionReaddirOptions : {} as ConnectionReaddirOptions;
+        const callback = _callback ? _callback : _options as ((error : Error, properties ?: Properties) => void);
+
+        let [findProps, extraProperties] = createPropFindBody(options);
+            
         this.request({
             url: path,
             method: 'PROPFIND',
             headers: {
                 depth: '0'
-            }
+            },
+            body: (extraProperties.length > 0 ? findProps.toXML() : '')
         }, (e, res, body) => {
             if(e)
                 return callback(e);
@@ -572,26 +628,39 @@ export class Connection
             
             try
             {
-                const properties = XML.parse(body)
+                const properties = XML.parse(Buffer.isBuffer(body) ? Int8Array.from(body) : body)
                     .find('DAV:multistatus')
                     .find('DAV:response')
-                    .find('DAV:propstat')
-                    .find('DAV:prop')
-                    .elements
-                    .map((el) => {
-                        return {
-                            name: el.name,
-                            attributes: el.attributes,
-                            value: el.elements.length === 0 ? undefined : el.elements.length === 1 && el.elements[0].type === 'text' ? (el.elements[0] as any).text : el.elements
-                        }
+                    .findMany('DAV:propstat')
+                    .map(el => {
+                        return el.find('DAV:prop')
+                        .elements
+                        .map((el) => {
+                            let name = el.name;
+                            for (const extraProperty of extraProperties) {
+                                if (name && name === `${extraProperty.namespace}${extraProperty.element}`) {
+                                    name = `${extraProperty.namespaceShort}:${extraProperty.element}`;
+                                    break;
+                                }
+                            }
+
+                            return {
+                                name: name,
+                                attributes: el.attributes,
+                                value: el.elements.length === 0 ? undefined : el.elements.length === 1 && el.elements[0].type === 'text' ? (el.elements[0] as any).text : el.elements
+                            }
+                        })
                     })
-                
+
                 const result : Properties = {};
-                for(const prop of properties)
-                    result[prop.name] = {
-                        content: prop.value,
-                        attributes: prop.attributes
+                for (const propArr of properties) {
+                    for (const prop of propArr) {
+                        result[prop.name] = {
+                            content: prop.value,
+                            attributes: prop.attributes
+                        }
                     }
+                }
 
                 callback(null, result);
             }
@@ -601,4 +670,63 @@ export class Connection
             }
         })
     }
+}
+
+function createPropFindBody(options: ConnectionReaddirOptions): [XMLElementBuilder, ConnectionReaddirProperty[]] {
+    const findProps = new XMLElementBuilder(
+        'd:propfind',
+        { 'xmlns:d': 'DAV:' }
+    );
+
+    const xmlProp = findProps.ele('d:prop');
+    xmlProp.ele('d:resourcetype');
+    xmlProp.ele('d:creationdate');
+    xmlProp.ele('d:getlastmodified');
+    xmlProp.ele('d:getcontentlength');
+
+    let extraProperties: ConnectionReaddirProperty[] = [];
+
+    if (options && options.extraProperties && options.extraProperties.length > 0) {
+        extraProperties = options.extraProperties.filter(extraProperty => {
+            return extraProperty.namespaceShort
+                && extraProperty.namespaceShort.length > 0
+                && extraProperty.namespace
+                && extraProperty.namespace.length > 0
+                && extraProperty.element
+                && extraProperty.element.length > 0;
+        });
+
+        if (extraProperties.length > 0) {
+            uniqBy(options.extraProperties, extraProperty => extraProperty.namespaceShort)
+            .forEach(extraProperty => {
+                if (extraProperty.namespaceShort !== 'd') {
+                    findProps.attributes[`xmlns:${extraProperty.namespaceShort}`] = extraProperty.namespace;
+                }
+            });
+
+            options.extraProperties.forEach(extraProperty => {
+                xmlProp.ele(`${extraProperty.namespaceShort}:${extraProperty.element}`);
+            });
+        }
+    }
+
+    return [findProps, extraProperties];
+}
+
+function toNativeType(value: string) {
+    let numValue = Number(value);
+
+    if (!isNaN(numValue)) {
+        return numValue;
+    }
+
+    let boolValue = value.toLowerCase();
+
+    if (boolValue === 'true') {
+        return true;
+    } else if (boolValue === 'false') {
+        return false;
+    }
+
+    return value;
 }

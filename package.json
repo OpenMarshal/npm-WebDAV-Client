@@ -9,13 +9,14 @@
     "client"
   ],
   "scripts": {
+    "prepare": "npm run build && npm run browserify",
     "dev": "cd src && tsc -w",
     "browserify": "browserify lib/browser.js > lib/browserified.js",
     "build": "cd src && tsc",
     "test": "node test/test.js"
   },
   "name": "webdav-client",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "author": "Adrien Castex <adrien.castex@gmail.com>",
   "license": "Unlicense",
   "repository": {
@@ -30,7 +31,10 @@
   },
   "types": "./lib/index.d.ts",
   "dependencies": {
+    "lodash.uniqby": "^4.7.0",
     "request": "^2.81.0",
-    "xml-js-builder": "^1.0.1"
+    "xml-js-builder": "^1.0.1",
+    "typescript": "^3.5.3",
+    "browserify": "^16.3.0"
   }
 }

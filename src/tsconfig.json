@@ -5,6 +5,7 @@
     "removeComments": false,
     "preserveConstEnums": true,
     "declaration": true,
+    "moduleResolution": "node",
     "outDir": "../lib",
     "typeRoots": [
       "../node_modules/@types"

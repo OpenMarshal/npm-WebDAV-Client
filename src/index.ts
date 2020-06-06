@@ -275,7 +275,7 @@ export class Connection
         })
     }
 
-    exists(path : string, callback : (error : Error, exists : boolean) => void) : void
+    exists(path : string, callback : (error : Error, exists ?: boolean) => void) : void
     {
         this.request({
             url: path,
@@ -284,7 +284,10 @@ export class Connection
                 depth: '0'
             }
         }, (e, res, body) => {
-            callback(e, res.statusCode <= 400);
+            if(e)
+                return callback(e);
+
+            callback(null, res.statusCode <= 400);
         })
     }
 
